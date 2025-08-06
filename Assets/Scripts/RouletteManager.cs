@@ -1,11 +1,12 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
+using TMPro;
 
 public class RouletteManager : MonoBehaviour
 {
     public static RouletteManager Instance { get; private set; }
-
 
     [Header("Wheel Settings")]
     public Transform wheel;
@@ -20,18 +21,19 @@ public class RouletteManager : MonoBehaviour
     public Transform ballSpawnPoint;
     public Transform sphereCenter;
 
-    public float currentBallSpeed = 0f;
-
-    public float ballOrbitRadius = 2f;
-    public float orbitSpeed = 300f;
-
     [Header("Slot Settings")]
-    public GameObject[] allSlots; 
+    public GameObject[] allSlots;
 
     [HideInInspector] public int selectedNumber;
 
     public bool gameStart = false;
     public float gameTimer = 0;
+
+    [Header("Betting System")]
+    public List<Bet> playerBets = new List<Bet>();
+
+    public Transform chipParent; // Instantiate edilecek parent (isteğe bağlı)
+    public GameObject[] chipPrefabs; // Farklı para değerleri için chip prefabları
 
     private void Awake()
     {
@@ -45,7 +47,6 @@ public class RouletteManager : MonoBehaviour
 
         ballObject = Instantiate(ballPrefab, ballSpawnPoint.position, ballSpawnPoint.rotation);
         ballController = ballObject.GetComponent<ballController>();
-
     }
 
     private void Update()
@@ -58,12 +59,15 @@ public class RouletteManager : MonoBehaviour
             {
                 gameTimer -= Time.deltaTime;
 
-                if(gameTimer <= 0)
+                if (gameTimer <= 0)
                 {
                     gameStart = false;
                     gameTimer = 3;
 
+                    ballController.ballSpeedController(0, .5f);
                     ballController.ballRB.isKinematic = false;
+
+                    ballController.WaitAndJumpToTarget(allSlots[selectedNumber].transform.position);
                 }
             }
         }
@@ -71,7 +75,7 @@ public class RouletteManager : MonoBehaviour
 
     public void Spin()
     {
-        currentBallSpeed *= 3;
+        ballController.ballSpeedController(300, .1f);
         gameTimer = 3;
 
         gameStart = true;
@@ -87,8 +91,94 @@ public class RouletteManager : MonoBehaviour
         else
         {
             selectedNumber = -1;
-            ballController.slotTarget = null;
         }
     }
 
+    public void PlaceBet(Bet newBet)
+    {
+        if (newBet.amount > RouletteUIManager.Instance.currentBalance)
+        {
+            Debug.Log("Yetersiz bakiye!");
+            return;
+        }
+
+        playerBets.Add(newBet);
+        RouletteUIManager.Instance.currentBalance -= newBet.amount;
+        RouletteUIManager.Instance.UpdateBalanceUI();
+    }
+
+    public void OnBallLanded(int landedNumber)
+    {
+        Debug.Log("Ball landed on: " + landedNumber);
+
+        string color = GetColor(landedNumber);
+
+        foreach (var bet in playerBets)
+        {
+            bool won = false;
+
+            switch (bet.type)
+            {
+                case BetType.Number:
+                    won = bet.value == landedNumber.ToString();
+                    break;
+                case BetType.Color:
+                    won = bet.value.ToLower() == color.ToLower();
+                    break;
+                case BetType.EvenOdd:
+                    won = (landedNumber % 2 == 0 && bet.value == "even") || (landedNumber % 2 == 1 && bet.value == "odd");
+                    break;
+                case BetType.Range:
+                    int n = landedNumber;
+                    if (bet.value == "1-18") won = n >= 1 && n <= 18;
+                    else if (bet.value == "19-36") won = n >= 19 && n <= 36;
+                    break;
+            }
+
+            if (won)
+            {
+                float payout = bet.amount * GetPayoutMultiplier(bet.type);
+                Debug.Log($"Bet WON! {bet.type} - {bet.value} -> payout: {payout}");
+                RouletteUIManager.Instance.AdjustBalance(payout);
+            }
+            else
+            {
+                Debug.Log($"Bet LOST: {bet.type} - {bet.value}");
+            }
+        }
+
+        playerBets.Clear();
+    }
+
+    private string GetColor(int number)
+    {
+        if (number == 0) return "green";
+        int[] redNumbers = new int[] {
+            1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36
+        };
+        return redNumbers.Contains(number) ? "red" : "black";
+    }
+
+    private float GetPayoutMultiplier(BetType type)
+    {
+        switch (type)
+        {
+            case BetType.Number: return 35f;
+            case BetType.Color:
+            case BetType.EvenOdd:
+            case BetType.Range:
+                return 2f;
+            default: return 1f;
+        }
+    }
+}
+
+public enum BetType { Number, Color, EvenOdd, Range }
+
+[System.Serializable]
+public class Bet
+{
+    public BetType type;
+    public string value; // örnek: "17", "red", "even", "1-18"
+    public float amount;
 }
