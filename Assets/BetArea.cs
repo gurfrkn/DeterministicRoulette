@@ -58,7 +58,7 @@ public class BetArea : MonoBehaviour
         if (chipPrefab != null)
         {
             Vector3 offset = Vector3.up * 0.01f * (chipCount + 1);
-            Instantiate(chipPrefab, transform.position + offset, Quaternion.Euler(90f, 0f, 0f), RouletteManager.Instance.chipParent);
+            Instantiate(chipPrefab, transform.position + offset, Quaternion.Euler(90f, 0f, 180f), RouletteManager.Instance.chipParent);
             chipCount++;
         }
     }

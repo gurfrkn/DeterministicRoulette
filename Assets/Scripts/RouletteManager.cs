@@ -8,6 +8,10 @@ public class RouletteManager : MonoBehaviour
 {
     public static RouletteManager Instance { get; private set; }
 
+    [Header("American Euro Roulette Items")]
+    public GameObject[] americanRouletteItems;
+    public GameObject[] euroRouletteItems;
+
     [Header("Wheel Settings")]
     public Transform wheel;
     public float currentWheelSpeed = 0f;
@@ -73,14 +77,7 @@ public class RouletteManager : MonoBehaviour
         }
     }
 
-    public void Spin()
-    {
-        ballController.ballSpeedController(300, .1f);
-        gameTimer = 3;
-
-        gameStart = true;
-    }
-
+    
     public void SetSelectedNumber(string numberText)
     {
         if (int.TryParse(numberText, out int value) && value >= 0 && value < allSlots.Length)
@@ -101,6 +98,8 @@ public class RouletteManager : MonoBehaviour
             Debug.Log("Yetersiz bakiye!");
             return;
         }
+
+        Debug.Log(newBet);
 
         playerBets.Add(newBet);
         RouletteUIManager.Instance.currentBalance -= newBet.amount;

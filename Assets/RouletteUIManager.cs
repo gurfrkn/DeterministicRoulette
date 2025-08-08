@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
 
 public class RouletteUIManager : MonoBehaviour
@@ -10,6 +11,10 @@ public class RouletteUIManager : MonoBehaviour
     public TextMeshProUGUI balanceText;
 
     public float currentBalance;
+
+    public Button spinButtonImg;
+    public GameObject chipsUi;
+    public GameObject inputUi;
 
     private void Awake()
     {
@@ -49,4 +54,18 @@ public class RouletteUIManager : MonoBehaviour
         selectedChipValue = value;
         Debug.Log("Chip selected: " + value);
     }
+
+    public void SpinButton()
+    {
+        RouletteManager.Instance.ballController.ballSpeedController(300, .1f);
+
+        RouletteManager.Instance.gameTimer = 3;
+
+        RouletteManager.Instance.gameStart = true;
+
+        spinButtonImg.gameObject.SetActive(false);
+        chipsUi.SetActive(false);
+        inputUi.SetActive(false);
+    }
+
 }

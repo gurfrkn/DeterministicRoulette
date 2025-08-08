@@ -31,7 +31,11 @@ public class ballController : MonoBehaviour
 
             ballSpeedController(0f, 0.1f);
 
-            RouletteManager.Instance.OnBallLanded(slotTarget);
+            RouletteManager.Instance.OnBallLanded(slotPointController.id);
+
+            lockBallOnTarget = true;
+
+            ballTarget = slotPointController.transform;
         }
     }
 
