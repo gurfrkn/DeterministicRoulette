@@ -15,27 +15,45 @@ public class ballController : MonoBehaviour
     public float currentBallSpeed;
     private Coroutine speedLerpCoroutine;
 
+    public bool startCheckDistance = false;
+
+    private Vector3 smoothVelocity;
+
+    float ballDistanceToSlot;
+    public float minDistanceToSlotToJump = 3f;
+
     private void Awake()
     {
         ballRB = GetComponent<Rigidbody>();
         ballRB.isKinematic = true;
 
         ballSpeedController(150f, 0.1f);
+        Debug.Log("Ball initialized with starting speed.");
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("slot"))
+        if (!other.CompareTag("slot")) return;
+
+        slotPointController = other.GetComponent<SlotPointController>();
+
+        if (startCheckDistance)
         {
-            slotPointController = other.GetComponent<SlotPointController>();
-
+            if (slotPointController.id == RouletteManager.Instance.destSlot.GetComponent<SlotPointController>().id)
+            {
+                RouletteManager.Instance.OnBallLanded(slotPointController.id);
+                Debug.Log($"Ball landed on target slot: {slotPointController.id}");
+            }
+        }
+        else
+        {
             ballSpeedController(0f, 0.1f);
-
             RouletteManager.Instance.OnBallLanded(slotPointController.id);
 
             lockBallOnTarget = true;
-
             ballTarget = slotPointController.transform;
+
+            Debug.Log($"Ball locked to slot: {slotPointController.id}");
         }
     }
 
@@ -43,10 +61,39 @@ public class ballController : MonoBehaviour
     {
         if (lockBallOnTarget)
         {
-            transform.position = ballTarget.position;
+            if (startCheckDistance)
+            {
+                if (Vector3.Distance(transform.position, ballTarget.position) > 0.2f)
+                {
+                    // Small upward bounce effect
+                    ballRB.AddForce(Vector3.up * 100, ForceMode.Acceleration);
+
+                    // Smooth movement towards the target slot
+                    Vector3 newPos = Vector3.SmoothDamp(
+                        ballRB.position,
+                        ballTarget.position,
+                        ref smoothVelocity,
+                        0.06f
+                    );
+                    ballRB.MovePosition(newPos);
+                }
+                else
+                {
+                    transform.position = ballTarget.position;
+                    Debug.Log("Ball reached target position.");
+                }
+            }
+            else
+            {
+                transform.position = ballTarget.position;
+            }
             return;
         }
 
+        if (startCheckDistance)
+            ballDistanceCheck();
+
+        // Natural rotation around the wheel
         transform.Rotate(transform.right * 100f * Time.deltaTime);
         transform.RotateAround(RouletteManager.Instance.sphereCenter.position, Vector3.up, currentBallSpeed * Time.deltaTime);
     }
@@ -67,60 +114,26 @@ public class ballController : MonoBehaviour
         while (time < duration)
         {
             time += Time.deltaTime;
-            float t = time / duration;
-            currentBallSpeed = Mathf.Lerp(startSpeed, targetSpeed, t);
+            currentBallSpeed = Mathf.Lerp(startSpeed, targetSpeed, time / duration);
             yield return null;
         }
 
         currentBallSpeed = targetSpeed;
         speedLerpCoroutine = null;
+        Debug.Log($"Ball speed changed to {targetSpeed}.");
     }
 
-    public bool IsTargetFeasible(Vector3 targetPosition, float maxDistance = 1.5f, float maxAngle = 45f)
+    public void ballDistanceCheck()
     {
-        float distance = Vector3.Distance(transform.position, targetPosition);
-        if (distance > maxDistance) return false;
+        ballSpeedController(0.5f, 1f);
 
-        Vector3 toTarget = (targetPosition - transform.position).normalized;
-        float angle = Vector3.Angle(transform.forward, toTarget);
+        ballDistanceToSlot = Vector3.Distance(transform.position, RouletteManager.Instance.destSlot.transform.position);
 
-        return angle <= maxAngle;
-    }
-
-    public void JumpToTarget(Vector3 targetPosition, float upwardForce = 3f, float forwardForce = 2f)
-    {
-        ballRB.velocity = Vector3.zero;
-        ballRB.angularVelocity = Vector3.zero;
-
-        Vector3 direction = (targetPosition - transform.position).normalized;
-        Vector3 force = direction * forwardForce + Vector3.up * upwardForce;
-
-        ballRB.AddForce(force, ForceMode.VelocityChange);
-    }
-
-    private Coroutine jumpWaitCoroutine;
-
-    public void WaitAndJumpToTarget(Vector3 targetPosition, float upwardForce = 3f, float forwardForce = 2f, float checkInterval = 0.05f)
-    {
-        if (jumpWaitCoroutine != null)
-            StopCoroutine(jumpWaitCoroutine);
-
-        jumpWaitCoroutine = StartCoroutine(WaitUntilFeasibleAndJump(targetPosition, upwardForce, forwardForce, checkInterval));
-    }
-
-    private IEnumerator WaitUntilFeasibleAndJump(Vector3 targetPosition, float upwardForce, float forwardForce, float checkInterval)
-    {
-        while (true)
+        if (ballDistanceToSlot <= minDistanceToSlotToJump)
         {
-            if (IsTargetFeasible(targetPosition))
-            {
-                JumpToTarget(targetPosition, upwardForce, forwardForce);
-                jumpWaitCoroutine = null;
-                yield break;
-            }
-
-            yield return new WaitForSeconds(checkInterval);
+            ballTarget = RouletteManager.Instance.destSlot.transform;
+            lockBallOnTarget = true;
+            Debug.Log("Target slot within jump range. Locking ball.");
         }
     }
-
 }

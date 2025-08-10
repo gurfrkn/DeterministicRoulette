@@ -4,14 +4,14 @@ using System.Linq;
 public class BetArea : MonoBehaviour
 {
     public BetType betType;
-    public string betValue; // örnek: "17", "red", "even", "1-18"
+    public string betValue; // e.g., "17", "red", "even", "1-18"
 
     private Renderer rend;
     private MaterialPropertyBlock propBlock;
     private Color originalColor;
-    public Color hoverColor = new Color(1f, 1f, 0.6f, 1f); // Hafif sarımsı vurgulu renk
+    public Color hoverColor = new Color(1f, 1f, 0.6f, 1f); // subtle highlight for hover
 
-    private int chipCount = 0; // Eklenen chip sayısını takip eder
+    private int chipCount = 0; // stacked chip count on this area
 
     private void Awake()
     {
@@ -21,7 +21,7 @@ public class BetArea : MonoBehaviour
         if (rend != null)
         {
             rend.GetPropertyBlock(propBlock);
-            originalColor = propBlock.GetColor("_BaseColor"); // URP'de "_BaseColor" kullanılır
+            originalColor = propBlock.GetColor("_BaseColor"); // URP main color
         }
     }
 
@@ -30,9 +30,11 @@ public class BetArea : MonoBehaviour
         if (!RouletteManager.Instance || RouletteUIManager.Instance.selectedChipValue <= 0)
             return;
 
-        float chipAmount = RouletteUIManager.Instance.selectedChipValue;
+        RouletteManager.Instance.betGiven = true;
 
-        // Bakiye kontrolü
+        int chipAmount = RouletteUIManager.Instance.selectedChipValue;
+
+        // balance check
         if (!RouletteUIManager.Instance.HasEnoughBalance(chipAmount))
             return;
 
@@ -48,38 +50,43 @@ public class BetArea : MonoBehaviour
 
         InstantiateChip(chipAmount);
 
-        Debug.Log($"Bet placed: {betType} - {betValue} - {chipAmount}");
+        Debug.Log($"[Bet] {betType} {betValue}  +${chipAmount}");
     }
 
     private void InstantiateChip(float amount)
     {
-        GameObject chipPrefab = RouletteManager.Instance.chipPrefabs.FirstOrDefault(chip => chip.name.Contains(amount.ToString()));
+        // pick chip prefab by name match (e.g., "Chip_5", "Chip_25")
+        GameObject chipPrefab = RouletteManager.Instance.chipPrefabs
+            .FirstOrDefault(chip => chip.name.Contains(amount.ToString()));
 
         if (chipPrefab != null)
         {
-            Vector3 offset = Vector3.up * 0.01f * (chipCount + 1);
-            Instantiate(chipPrefab, transform.position + offset, Quaternion.Euler(90f, 0f, 180f), RouletteManager.Instance.chipParent);
+            Vector3 offset = Vector3.up * 0.01f * (chipCount + 1); // stack slightly upwards
+            Instantiate(
+                chipPrefab,
+                transform.position + offset,
+                Quaternion.Euler(90f, 0f, 180f),
+                RouletteManager.Instance.chipParent
+            );
             chipCount++;
         }
     }
 
     private void OnMouseEnter()
     {
-        if (rend != null)
-        {
-            rend.GetPropertyBlock(propBlock);
-            propBlock.SetColor("_BaseColor", hoverColor);
-            rend.SetPropertyBlock(propBlock);
-        }
+        if (rend == null) return;
+
+        rend.GetPropertyBlock(propBlock);
+        propBlock.SetColor("_BaseColor", hoverColor);
+        rend.SetPropertyBlock(propBlock);
     }
 
     private void OnMouseExit()
     {
-        if (rend != null)
-        {
-            rend.GetPropertyBlock(propBlock);
-            propBlock.SetColor("_BaseColor", originalColor);
-            rend.SetPropertyBlock(propBlock);
-        }
+        if (rend == null) return;
+
+        rend.GetPropertyBlock(propBlock);
+        propBlock.SetColor("_BaseColor", originalColor);
+        rend.SetPropertyBlock(propBlock);
     }
 }
