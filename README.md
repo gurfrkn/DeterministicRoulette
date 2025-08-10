@@ -24,11 +24,12 @@ A 3D roulette prototype with:
 - Open the project, load the main scene, press **Play**.
 
 
-## 🖼 Screenshots / Demo
-
-
 ## 📌 Notes
 - Physics tuned for natural deceleration & slot settling.
 - Euro/American toggle via UI.
 - Minimal, human-readable logs & comments.
+
+## 🔄 Work in Progress
+- The ball drop animation onto the wheel has been improved for a more realistic and bouncy feel, but it’s not yet at the desired level.  
+  Further tuning on physics forces, bounce timing, and spin synchronization is planned.
 
