@@ -73,7 +73,7 @@ public class ballController : MonoBehaviour
                         ballRB.position,
                         ballTarget.position,
                         ref smoothVelocity,
-                        0.06f
+                        0.08f
                     );
                     ballRB.MovePosition(newPos);
                 }
