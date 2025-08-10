@@ -32,6 +32,3 @@ A 3D roulette prototype with:
 - Euro/American toggle via UI.
 - Minimal, human-readable logs & comments.
 
-## 📜 License
-MIT
-
